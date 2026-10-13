@@ -2889,4 +2889,17 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
   });
 })();
 </script>
+<script>
+/* 修正骨架章尾预告卡文案(独立脚本, 不改动主交互层):
+   骨架 initChapterPreview() 按"1 单元 = 1 章"假设硬编码「继续读第 N 章」,
+   而本书单元序号与真实章号并不一致(N 实为"单元序号")。
+   这里在骨架初始化后把措辞改回「第 N 个单元」, 只改文案不动链接与结构。 */
+(() => {
+  const fix = () => document.querySelectorAll('.cn-kick').forEach(el => {
+    el.textContent = el.textContent.replace(/^继续读第\s*(\d+)\s*章$/, '继续读第 $1 个单元');
+  });
+  if (document.readyState === 'complete') fix();
+  else window.addEventListener('load', fix);
+})();
+</script>
 </body></html>
