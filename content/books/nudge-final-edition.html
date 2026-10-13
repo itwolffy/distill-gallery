@@ -2377,6 +2377,22 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
     // 竖向 tidy 布局:后序 y 游标(变高不重叠),父居子中点
     const VGAP = 16; let cursor = 0;
     (function place(n){ n.x = colX[n.depth]; if (n.children.length === 0) { n.top = cursor; n.cy = cursor + n.h / 2; cursor += n.h + VGAP; } else { n.children.forEach(place); const f = n.children[0], l = n.children[n.children.length - 1]; n.cy = (f.cy + l.cy) / 2; n.top = n.cy - n.h / 2; } })(rootNode);
+    // 竖向防叠(v0.11.1): 二级块(关键词+判断句+章码 chip)常比其子树占位更高, 而上面游标只按
+    // 叶子推进, 相邻子树会压叠(父块压到下一兄弟/下一分支)。补一轮按列自上而下的"整子树推下"
+    // + 自底向上回正父中心; 只向下移 => 单调收敛, 最多 4 轮。
+    function mmShift(n, dy){ n.top += dy; n.cy += dy; n.children.forEach(c => mmShift(c, dy)); }
+    for (let mmPass = 0; mmPass < 4; mmPass++) {
+      let mmMoved = false;
+      for (let d = 0; d <= maxDepth; d++) {
+        const col = [...byDepth[d]].sort((a, b) => a.top - b.top);
+        for (let i = 1; i < col.length; i++) {
+          const need = (col[i - 1].top + col[i - 1].h + VGAP) - col[i].top;
+          if (need > 0.01) { mmShift(col[i], need); mmMoved = true; }
+        }
+      }
+      (function recentre(n){ if (!n.children.length) return; n.children.forEach(recentre); const f = n.children[0], l = n.children[n.children.length - 1]; n.cy = (f.cy + l.cy) / 2; n.top = n.cy - n.h / 2; })(rootNode);
+      if (!mmMoved) break;
+    }
     // 画布边界
     const MARGIN = 42; let minY = Infinity, maxY = -Infinity, maxX = -Infinity;
     Object.values(byDepth).flat().forEach(n => { minY = Math.min(minY, n.top); maxY = Math.max(maxY, n.top + n.h); maxX = Math.max(maxX, n.x + n.w); });
