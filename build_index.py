@@ -69,6 +69,14 @@ def build() -> int:
         s = re.split(r"[：:—–]", s)[0].strip()
         return s if len(s) <= 10 else s[:10] + "…"
 
+    def spine_meta(it) -> str:
+        """脊上第二行: 给出该介质最有信息量的量; 缺字段则退回转述字数(高度口径始终是转述正文量)"""
+        if it["type"] == "videos" and it.get("episodes"):
+            return f"{it['episodes']} 集"
+        if it["type"] == "biographies" and it.get("life_span"):
+            return str(it["life_span"])
+        return f"{round(it.get('chars', 0)/10000, 1)}万字"
+
     spines = []
     for it in lib:
         label = spine_label(it["title"])
@@ -79,7 +87,7 @@ def build() -> int:
             f'style="--h:{h}px;--sp:{TYPE_VAR[it["type"]]}" '
             f'href="{esc(it["path"])}" aria-label="《{esc(it["title"])}》，阅读" title="{esc(it["title"])}">'
             f'<span class="t">{esc(label)}</span>'
-            f'<span class="len">{round(it.get("chars", 0)/10000, 1)}万字</span></a>')
+            f'<span class="len">{esc(spine_meta(it))}</span></a>')
 
     counts = {t: sum(1 for i in lib if i["type"] == t) for t in TYPE_NAMES if any(i["type"] == t for i in lib)}
     chips = [f'<button class="chip on" data-type="all">全部<small>{total}</small></button>'] + [

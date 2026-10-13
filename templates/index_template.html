@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="长篇材料——一本书、一档视频系列、一个人物的生平——被蒸馏成一页可回查的交互资料。">
-<title>蒸馏书架</title>
+<meta name="description" content="一本书、一档视频系列、一个人物的生平，在这里被拆开重讲成一页离线可开的交互资料。">
+<title>蒸馏馆</title>
 <style>
 /* ===== TOKENS: 7 主题, 与单书蒸馏页同源(:root=暖纸默认 + 6 个 body[data-theme] 覆盖) =====
    规则: hex 只出现在下列 token 块内; 组件样式一律 var(--*) */
@@ -105,16 +105,25 @@ a{color:inherit}
 .mh-rule{margin:30px 0 0;border:0;border-top:3px double var(--ink);opacity:.55}
 .mh-rule2{border:0;border-top:1px solid var(--line);margin-top:3px}
 
-/* ---------- 书架: 竖排书脊, 高度=转述字数, 用主题 token 换肤(非木质) ---------- */
+/* ---------- 馆藏: 一排竖脊, 高度=转述正文量(统一口径, 故厚薄可比) ----------
+   形制区分介质(定性, 一眼认出), 高度区分内容量(定量, 跨介质可比):
+     books       窄脊 54px + 顶部实色带
+     videos      宽盒 70px + 顶部双线(碟盒感)
+     biographies 窄脊      + 顶部刻度段(年表感)                              */
 .shelf-wrap{margin-top:36px}
 .shelf{display:flex;align-items:flex-end;gap:12px;overflow-x:auto;padding:0 4px;
   border-bottom:5px solid var(--line)}
-.spine{position:relative;flex:0 0 auto;width:54px;height:var(--h,210px);text-decoration:none;
+.spine{position:relative;flex:0 0 auto;width:var(--w,54px);height:var(--h,210px);text-decoration:none;
   background:linear-gradient(180deg,var(--paper),var(--paper-deep));
   border:1px solid var(--line);border-bottom:0;border-radius:3px 3px 0 0;
   display:flex;flex-direction:column;align-items:center;padding:0 0 11px;
   transition:transform .18s ease}
 .spine::before{content:"";width:100%;height:6px;background:var(--sp,var(--green));border-radius:3px 3px 0 0}
+.spine[data-type="videos"]{--w:70px}
+.spine[data-type="videos"]::before{height:15px;
+  background:linear-gradient(180deg,var(--sp,var(--green)) 0 5px,transparent 5px 9px,var(--sp,var(--green)) 9px 15px)}
+.spine[data-type="biographies"]::before{height:9px;
+  background:repeating-linear-gradient(90deg,var(--sp,var(--green)) 0 4px,transparent 4px 8px)}
 .spine:hover{transform:translateY(-7px)}
 .spine .t{writing-mode:vertical-rl;white-space:nowrap;font:700 15px/1 var(--font-display);letter-spacing:.24em;color:var(--ink);margin-top:11px}
 .spine .len{writing-mode:vertical-rl;white-space:nowrap;margin-top:auto;font:12px/1 var(--font-ui);color:var(--muted);letter-spacing:.08em}
@@ -220,15 +229,15 @@ footer{margin-top:76px;padding-top:22px;border-top:1px solid var(--line);
       <p class="mh-stat">{{STAT}}</p>
     </div>
     <h1>把长篇，蒸成一页可回查的地图</h1>
-    <p class="mh-sub">一本书、一档视频系列、一个人物的生平，被拆成骨架、转述与批判，压进一页零依赖的交互资料。AI 蒸馏是地图，不是目的地 -- 关键处请回原始材料细看。</p>
+    <p class="mh-sub">一本书、一档视频系列、一个人物的生平，在这里被拆开重讲：它主张什么、怎么论证、哪里靠不住，全部压进一页离线可开的网页。AI 蒸馏是地图，不是领土 -- 关键处请回原始材料细看。</p>
     <hr class="mh-rule"><hr class="mh-rule2">
   </header>
 
   <section class="shelf-wrap">
-    <div class="shelf" id="shelf" role="region" aria-label="书架（可横向滚动）" tabindex="0">
+    <div class="shelf" id="shelf" role="region" aria-label="馆藏（可横向滚动）" tabindex="0">
 {{SHELF}}
     </div>
-    <p class="shelf-hint">书脊高度 = 转述正文的量 · 点击书脊直达</p>
+    <p class="shelf-hint">脊高 = 转述正文的量 · 点击直达</p>
   </section>
 
   <nav class="filters" id="filters" aria-label="按类型筛选">{{FILTERS}}</nav>
