@@ -2747,7 +2747,7 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
         if (title) {
           nextBtn.classList.add('cn-card');
           nextBtn.textContent = '';
-          const k = document.createElement('span'); k.className = 'cn-kick'; k.textContent = '继续读第 ' + nn + ' 章';
+          const k = document.createElement('span'); k.className = 'cn-kick'; k.textContent = '继续读第 ' + nn + ' 个单元';
           const t = document.createElement('span'); t.className = 'cn-title'; t.textContent = title;
           const m = document.createElement('span'); m.className = 'cn-meta'; m.textContent = (meta ? meta + ' ' : '') + '→';
           nextBtn.appendChild(k); nextBtn.appendChild(t); nextBtn.appendChild(m);
@@ -2812,7 +2812,7 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
       let pick = null, top = Infinity;
       inView.forEach((vis, ch) => { if (vis) { const y = ch.getBoundingClientRect().top; if (y < top) { top = y; pick = ch; } } });
       if (pick) {
-        if (cxCh) cxCh.textContent = '第 ' + pick.id.replace('ch-', '') + ' 章';
+        if (cxCh) cxCh.textContent = '第 ' + pick.id.replace('ch-', '') + ' 个单元';
         updateProgress();
         bar.classList.add('show');
       } else {
