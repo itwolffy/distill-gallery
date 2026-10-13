@@ -2890,16 +2890,29 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
 })();
 </script>
 <script>
-/* 修正骨架章尾预告卡文案(独立脚本, 不改动主交互层):
-   骨架 initChapterPreview() 按"1 单元 = 1 章"假设硬编码「继续读第 N 章」,
-   而本书单元序号与真实章号并不一致(N 实为"单元序号")。
-   这里在骨架初始化后把措辞改回「第 N 个单元」, 只改文案不动链接与结构。 */
+/* 修正骨架中把「阅读单元序号」误标为「第 N 章」的文案(独立脚本, 不改动主交互层):
+   骨架两处按"1 单元 = 1 章"假设硬编码「章」--
+     ① initChapterPreview() 的章尾预告卡「继续读第 N 章」
+     ② 章内上下文条 paint() 的「第 N 章」(随滚动反复重绘)
+   本书单元序号与真实章号并不一致(N 实为"单元序号")。只改文案, 不动链接与结构。 */
 (() => {
-  const fix = () => document.querySelectorAll('.cn-kick').forEach(el => {
-    el.textContent = el.textContent.replace(/^继续读第\s*(\d+)\s*章$/, '继续读第 $1 个单元');
+  const fixKick = () => document.querySelectorAll('.cn-kick').forEach(el => {
+    const t = el.textContent.replace(/^继续读第\s*(\d+)\s*章$/, '继续读第 $1 个单元');
+    if (t !== el.textContent) el.textContent = t;
   });
-  if (document.readyState === 'complete') fix();
-  else window.addEventListener('load', fix);
+  const observeBar = () => {
+    const el = document.querySelector('.ch-ctxbar .cx-ch');
+    if (!el) return;
+    const fix = () => {
+      const t = el.textContent.replace(/^第\s*(\d+)\s*章$/, '第 $1 个单元');
+      if (t !== el.textContent) el.textContent = t;   // 值未变则不赋值, 避免触发自身死循环
+    };
+    new MutationObserver(fix).observe(el, { childList: true, characterData: true, subtree: true });
+    fix();
+  };
+  const run = () => { fixKick(); observeBar(); };
+  if (document.readyState === 'complete') run();
+  else window.addEventListener('load', run);
 })();
 </script>
 </body></html>
