@@ -1,0 +1,36 @@
+[
+  {
+    "slug": "thinking-fast-and-slow",
+    "type": "books",
+    "title": "思考，快与慢",
+    "author": "丹尼尔·卡尼曼",
+    "kicker": "论说 · 认知科学 · 判断与决策",
+    "slogan": "你以为在思考，其实是快系统在作答",
+    "question": "为什么聪明人也会系统性地犯蠢，又怎样跟这样的大脑相处？",
+    "path": "books/thinking-fast-and-slow.html",
+    "cover": "assets/covers/thinking-fast-and-slow.jpg",
+    "pub_year": 2011,
+    "updated": "2026-10-13",
+    "formula": "认知错觉 = 快系统的自动联想 × 慢系统的懒惰放行",
+    "chars": 31771,
+    "units": 20,
+    "review_note": "一轮内容审阅 + 22 处定点修正"
+  },
+  {
+    "slug": "nudge-final-edition",
+    "type": "books",
+    "title": "助推（最终版）",
+    "author": "理查德·泰勒、卡斯·桑斯坦",
+    "kicker": "论说 · 行为科学 · 政策设计",
+    "slogan": "轻轻一推，胜过一道禁令",
+    "question": "怎样才能帮人做出更好的选择，又不夺走他们的自由？",
+    "path": "books/nudge-final-edition.html",
+    "cover": "assets/covers/nudge-final-edition.jpg",
+    "pub_year": 2008,
+    "updated": "2026-10-12",
+    "formula": "行为结果 = 人的偏差 × 选择架构",
+    "chars": 27664,
+    "units": 18,
+    "review_note": "一轮内容审阅 + 定点修正"
+  }
+]
