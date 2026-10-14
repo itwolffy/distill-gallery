@@ -14,7 +14,7 @@
     "path": "books/nudge-final-edition.html",
     "cover": "assets/covers/nudge-final-edition.jpg",
     "pub_year": 2008,
-    "updated": "2026-10-13"
+    "updated": "2026-10-14"
   },
   {
     "slug": "thinking-fast-and-slow",
@@ -31,6 +31,6 @@
     "path": "books/thinking-fast-and-slow.html",
     "cover": "assets/covers/thinking-fast-and-slow.jpg",
     "pub_year": 2011,
-    "updated": "2026-10-13"
+    "updated": "2026-10-14"
   }
 ]
