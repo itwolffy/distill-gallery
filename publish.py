@@ -114,6 +114,11 @@ def sync():
                     "pub_year": None, "review_note": "", "updated": date.today().isoformat()}
         meta["type"] = ptype
         meta["path"] = f"{ptype}/{slug}.html"
+        if ptype == "videos":  # 书脊/列表展示集数(build_index.spine_meta 消费)
+            try:
+                meta["episodes"] = len(json.loads((d / "series.json").read_text(encoding="utf-8"))["videos"])
+            except Exception:
+                meta["episodes"] = len(json.loads(distill_file.read_text(encoding="utf-8")).get("videos", [])) if distill_file.is_file() else None
         has_cover = make_cover_thumb(slug)
         meta["cover"] = f"assets/covers/{slug}.jpg" if has_cover else None
 

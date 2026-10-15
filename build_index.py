@@ -82,10 +82,11 @@ def build() -> int:
         label = spine_label(it["title"])
         # 高度取二者较大: 字数驱动(设计信号) vs 文字容纳(硬约束, 15px 字 + .24em 间距 ≈17px/字)
         h = max(spine_h(it.get("chars", 20000)), 52 + len(label) * 17)
+        verb = "观看" if it["type"] == "videos" else "阅读"
         spines.append(
             f'      <a class="spine" data-type="{esc(it["type"])}" '
             f'style="--h:{h}px;--sp:{TYPE_VAR[it["type"]]}" '
-            f'href="{esc(it["path"])}" aria-label="《{esc(it["title"])}》，阅读" title="{esc(it["title"])}">'
+            f'href="{esc(it["path"])}" aria-label="《{esc(it["title"])}》，{verb}" title="{esc(it["title"])}">'
             f'<span class="t">{esc(label)}</span>'
             f'<span class="len">{esc(spine_meta(it))}</span></a>')
 
@@ -101,14 +102,16 @@ def build() -> int:
 
     cards = []
     for it in lib:
-        meta_bits = [f"{it.get('units', '-')} 个阅读单元", f"约 {max(1, round(it.get('chars', 0)/400))} 分钟"]
+        unit_word = "个主题段" if it["type"] == "videos" else "个阅读单元"
+        go_text = "观看蒸馏页 →" if it["type"] == "videos" else "阅读全文 →"
+        year_word = f"发布 {it['pub_year']}" if (it.get("pub_year") and it["type"] == "videos") else (f"成书 {it['pub_year']}" if it.get("pub_year") else "")
+        meta_bits = [f"{it.get('units', '-')} {unit_word}", f"约 {max(1, round(it.get('chars', 0)/400))} 分钟"]
         if it.get("review_note"):
             meta_bits.append(it["review_note"])
         if it.get("updated"):
             meta_bits.append(f"更新 {it['updated']}")
         dot = '<span class="dot">·</span>'
-        byline = " · ".join(a for a in (it.get("author", ""),
-                                        f"成书 {it['pub_year']}" if it.get("pub_year") else "") if a)
+        byline = " · ".join(a for a in (it.get("author", ""), year_word) if a)
         has_eq = bool(it.get("formula"))
         cards.append(f'''    <article class="entry" data-type="{esc(it['type'])}">
       <a class="entry-link" style="--sp:{TYPE_VAR[it['type']]}" href="{esc(it['path'])}">
@@ -119,7 +122,7 @@ def build() -> int:
           <p class="entry-byline">{esc(byline)}</p>
           {f'<p class="eq"><span class="eq-t">{render_formula(it["formula"])}</span></p>' if has_eq else ''}
           <p class="entry-q">{esc(it.get('question', ''))}</p>
-          <p class="entry-meta"><span>{dot.join(esc(b) for b in meta_bits)}</span><span class="go">阅读全文 →</span></p>
+          <p class="entry-meta"><span>{dot.join(esc(b) for b in meta_bits)}</span><span class="go">{go_text}</span></p>
         </div>
       </a>
     </article>''')
