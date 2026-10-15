@@ -32,5 +32,23 @@
     "cover": "assets/covers/thinking-fast-and-slow.jpg",
     "pub_year": 2011,
     "updated": "2026-10-14"
+  },
+  {
+    "slug": "economic-machine",
+    "type": "videos",
+    "title": "经济机器是怎样运转的",
+    "author": "瑞·达利欧（Ray Dalio）",
+    "kicker": "YouTube · 经济学讲解动画",
+    "slogan": "三股动力、四种工具、三条法则----一台看得懂的经济机器",
+    "question": "经济为什么总是繁荣与崩盘交替，而不是平稳增长？",
+    "formula": "经济走势 = 生产率增长轨迹 + 短期债务周期 + 长期债务周期",
+    "chars": 5655,
+    "units": 8,
+    "review_note": "",
+    "path": "videos/economic-machine.html",
+    "cover": "assets/covers/economic-machine.jpg",
+    "pub_year": 2014,
+    "updated": "2026-10-15",
+    "episodes": 1
   }
 ]
