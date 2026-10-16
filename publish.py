@@ -6,8 +6,9 @@
   python publish.py sync --dry-run  # 只看会做什么, 不写盘不提交
   python publish.py sync --no-push  # 同步并提交, 但不 push
 
-类型推断: distill-data/<slug>/ 内有 series.json → videos; 有 distill.json → books;
-两者皆无 → 跳过并提示(人物页等将来按 --type biographies 显式指定)。
+类型推断: series.json → videos; distill.json 里 source_type=person_topic 或
+render_profile.archetype=人物 → biographies; 其余有 distill.json 的 → books;
+都没有 → 跳过并提示。判错或判不出可用 --type books|videos|biographies 覆盖。
 工作区路径在 publish_config.json 配置。仅标准库 + PIL(封面缩略图, 缺失则跳过缩略图)。
 """
 import base64, io, json, re, shutil, subprocess, sys
@@ -21,6 +22,32 @@ WORKSHOP = Path(CFG["workshop"])
 DATA = WORKSHOP / "distill-data"
 DRY = "--dry-run" in sys.argv
 PUSH = "--no-push" not in sys.argv
+# --type <books|videos|biographies>: 强制指定类型, 覆盖自动判型(判定见 infer_type)
+TYPE_OVERRIDE = (sys.argv[sys.argv.index("--type") + 1]
+                 if "--type" in sys.argv and len(sys.argv) > sys.argv.index("--type") + 1 else None)
+
+
+def infer_type(d: Path):
+    """按页面自己的数据判型, 判不出来返回 None(调用方报 SKIP)。
+
+    只看"有没有 distill.json"是不够的: 人物页也有 distill.json, 会被判成 books。
+    再用 distill.json 里的 source_type / render_profile.archetype 分书与人物。
+    """
+    if (d / "series.json").is_file():
+        return "videos"
+    dj = d / "distill.json"
+    if dj.is_file():
+        try:
+            meta = json.loads(dj.read_text(encoding="utf-8"))
+        except Exception:
+            meta = {}
+        if isinstance(meta, dict) and (
+                meta.get("source_type") == "person_topic"
+                or (meta.get("render_profile") or {}).get("archetype") == "人物"
+                or meta.get("book_type") == "人物专题"):
+            return "biographies"
+        return "books"
+    return None
 
 
 def sh(*args):
@@ -87,13 +114,13 @@ def sync():
         page = d / f"{slug}.html"
         if not page.is_file():
             continue
-        if (d / "series.json").is_file():
-            ptype = "videos"
-        elif (d / "distill.json").is_file():
-            ptype = "books"
-        else:
-            skipped.append(f"{slug} (无法判断类型, 人物页请用 --type 显式指定后手动登记)")
+        ptype = TYPE_OVERRIDE or infer_type(d)
+        if ptype is None:
+            skipped.append(f"{slug} (无法判断类型, 用 --type books|videos|biographies 指定)")
             continue
+        if ptype not in ("books", "videos", "biographies"):
+            print(f"FAIL --type 只认 books|videos|biographies, 收到 {ptype!r}")
+            return 1
 
         dst = ROOT / "content" / ptype / f"{slug}.html"
         rel = f"content/{ptype}/{slug}.html"
