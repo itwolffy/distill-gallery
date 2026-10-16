@@ -4,7 +4,7 @@
 - dist/ = index.html + content/ + assets/ (构建产物, 不入 git, CI 部署)
 仅用标准库。
 """
-import json, re, shutil, sys
+import json, math, re, shutil, sys
 from datetime import date
 from pathlib import Path
 
@@ -53,8 +53,9 @@ def build() -> int:
     latest = max(i.get("updated", "") for i in lib)
 
     # 报头一行真实数据
-    stat_line = (f"{total} 本 · {round(total_chars/10000, 1)} 万字转述 · "
-                 f"{total_units} 个阅读单元 · 更新 {latest}")
+    # 介质中性口径: 库里混了书/视频/人物, "本"与"阅读单元"都不成立
+    stat_line = (f"{total} 份 · {round(total_chars/10000, 1)} 万字转述 · "
+                 f"{total_units} 个单元 · 更新 {latest}")
 
     TYPE_VAR = {"books": "var(--green)", "videos": "var(--blue)", "biographies": "var(--red)"}
 
@@ -62,10 +63,33 @@ def build() -> int:
     def spine_h(chars: int) -> int:
         return int(max(160, min(290, 160 + (chars - 20000) * 0.006)))
 
-    def spine_label(title: str) -> str:
-        """书脊短名: 去括号内容(如「（最终版）」), 截到首个冒号/破折号段, 长度封顶 --
-        保证竖排文字放得下(高度不够会折成两列)"""
-        s = re.sub(r"[（(【\[][^）)】\]]*[）)】\]]", "", title).strip()
+    # 竖排版式实测常数(templates/index_template.html 的 .spine .t:15px / letter-spacing .24em)
+    CHAR_H = 18.6        # 竖排一个字占的高度
+    NARROW_H = 8.7       # 「·」这类窄字符
+    COL_W = 15           # 每列占的宽度(= line-height)
+    TITLE_TOP = 11       # .t 的 margin-top
+    TITLE_GAP = 8        # 标题与下方字数之间的最小间距
+    META_CH = 9          # 竖排 12px 字数每字占高
+    BOTTOM_PAD = 11      # .spine 的 padding-bottom
+    ONE_COL_SLACK = 24   # 单列放不下时, 允许比正文量高度高出这么多仍不拆列(拆列会难看不值)
+    NARROW = "·．.、-"
+
+    def label_h(label: str) -> float:
+        return sum(NARROW_H if ch in NARROW else CHAR_H for ch in label)
+
+    def cap_h(t: str) -> int:
+        return {"videos": 15, "biographies": 9}.get(t, 6)
+
+    def need_h(t: str, label: str, meta: str, cols: int) -> float:
+        per = label_h(label) / max(1, len(label)) * math.ceil(len(label) / cols)
+        return cap_h(t) + TITLE_TOP + per + TITLE_GAP + len(meta) * META_CH + BOTTOM_PAD
+
+    def spine_label(it) -> str:
+        """书脊短名。library.json 给了 spine_label 就用它(标题长的必备, 否则脊高被标题撑起来,
+        和「脊高 = 转述正文量」的口径打架); 没给就按老规则自动取: 去括号内容、截到首个冒号/破折号段、封顶。"""
+        if it.get("spine_label"):
+            return it["spine_label"]
+        s = re.sub(r"[（(【\[][^）)】\]]*[）)】\]]", "", it["title"]).strip()
         s = re.split(r"[：:—–]", s)[0].strip()
         return s if len(s) <= 10 else s[:10] + "…"
 
@@ -79,16 +103,28 @@ def build() -> int:
 
     spines = []
     for it in lib:
-        label = spine_label(it["title"])
-        # 高度取二者较大: 字数驱动(设计信号) vs 文字容纳(硬约束, 15px 字 + .24em 间距 ≈17px/字)
-        h = max(spine_h(it.get("chars", 20000)), 52 + len(label) * 17)
-        verb = "观看" if it["type"] == "videos" else "阅读"
+        label = spine_label(it)
+        meta = spine_meta(it)
+        t = it["type"]
+        base_w = 70 if t == "videos" else 54
+        h0 = spine_h(it.get("chars", 20000))
+        # 脊名尽量一列; 一列放不下(比正文量高度高出超过 ONE_COL_SLACK)就折两列, 再不够折三列。
+        # 拆列时脊宽按列数加宽(每列 COL_W), 高度仍以正文量高度为底, 不被标题顶起来。
+        cols = 1
+        while cols < 3 and need_h(t, label, meta, cols) > h0 + ONE_COL_SLACK:
+            cols += 1
+        need = need_h(t, label, meta, cols)
+        h = max(h0, round(need))
+        w = base_w + (cols - 1) * COL_W
+        # 交给浏览器在同样的高度里折列, 与上面的算式一致
+        tmax = h - (cap_h(t) + TITLE_TOP + TITLE_GAP + len(meta) * META_CH + BOTTOM_PAD) + 6
+        verb = "观看" if t == "videos" else "阅读"
         spines.append(
-            f'      <a class="spine" data-type="{esc(it["type"])}" '
-            f'style="--h:{h}px;--sp:{TYPE_VAR[it["type"]]}" '
+            f'      <a class="spine" data-type="{esc(t)}" '
+            f'style="--h:{h}px;--sp:{TYPE_VAR[t]};--w:{w}px" '
             f'href="{esc(it["path"])}" aria-label="《{esc(it["title"])}》，{verb}" title="{esc(it["title"])}">'
-            f'<span class="t">{esc(label)}</span>'
-            f'<span class="len">{esc(spine_meta(it))}</span></a>')
+            f'<span class="t" style="max-height:{max(0, tmax)}px">{esc(label)}</span>'
+            f'<span class="len">{esc(meta)}</span></a>')
 
     counts = {t: sum(1 for i in lib if i["type"] == t) for t in TYPE_NAMES if any(i["type"] == t for i in lib)}
     chips = [f'<button class="chip on" data-type="all">全部<small>{total}</small></button>'] + [
@@ -103,7 +139,7 @@ def build() -> int:
     cards = []
     for it in lib:
         unit_word = "个主题段" if it["type"] == "videos" else "个阅读单元"
-        go_text = "观看蒸馏页 →" if it["type"] == "videos" else "阅读全文 →"
+        go_text = "阅读全文 →"   # 各介质统一(视频原先写「观看蒸馏页」, 改为与书/人物一致)
         year_word = f"发布 {it['pub_year']}" if (it.get("pub_year") and it["type"] == "videos") else (f"成书 {it['pub_year']}" if it.get("pub_year") else "")
         meta_bits = [f"{it.get('units', '-')} {unit_word}", f"约 {max(1, round(it.get('chars', 0)/400))} 分钟"]
         if it.get("review_note"):

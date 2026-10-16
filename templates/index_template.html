@@ -101,7 +101,9 @@ a{color:inherit}
 .mh-stat{color:var(--muted);font:12.5px/1 var(--font-ui);letter-spacing:.12em}
 .masthead h1{font-family:var(--font-display);font-weight:700;letter-spacing:.02em;
   font-size:clamp(30px,5.6vw,54px);line-height:1.24;margin:26px 0 0;text-wrap:balance}
-.masthead .mh-sub{color:var(--ink-soft);font-size:15px;line-height:1.95;max-width:33em;margin-top:16px;text-wrap:pretty}
+.masthead .mh-sub{color:var(--ink-soft);font-size:15px;line-height:1.95;max-width:40em;margin-top:16px;text-wrap:pretty}
+/* max-width 是行长(measure), 不是排布偷懒: 15px 字号下 40em = 600px ≈ 每行 40 个汉字,
+   中文正文的舒适区间(30-40 字/行)上限; 取消限制会到 ~61 字/行, 回扫容易串行 */
 .mh-rule{margin:30px 0 0;border:0;border-top:3px double var(--ink);opacity:.55}
 .mh-rule2{border:0;border-top:1px solid var(--line);margin-top:3px}
 
@@ -118,14 +120,18 @@ a{color:inherit}
   border:1px solid var(--line);border-bottom:0;border-radius:3px 3px 0 0;
   display:flex;flex-direction:column;align-items:center;padding:0 0 11px;
   transition:transform .18s ease}
-.spine::before{content:"";width:100%;height:6px;background:var(--sp,var(--green));border-radius:3px 3px 0 0}
+.spine::before{content:"";flex:0 0 auto;width:100%;height:6px;background:var(--sp,var(--green));border-radius:3px 3px 0 0}
+/* flex:0 0 auto 不能省:书脊是定高 column flex,标题+字数一超,::before 会被 flex-shrink 压成 0px,
+   介质色条整条消失(视频/人物这类长标签脊就是被这么压掉的) */
 .spine[data-type="videos"]{--w:70px}
 .spine[data-type="videos"]::before{height:15px;
   background:linear-gradient(180deg,var(--sp,var(--green)) 0 5px,transparent 5px 9px,var(--sp,var(--green)) 9px 15px)}
 .spine[data-type="biographies"]::before{height:9px;
   background:repeating-linear-gradient(90deg,var(--sp,var(--green)) 0 4px,transparent 4px 8px)}
 .spine:hover{transform:translateY(-7px)}
-.spine .t{writing-mode:vertical-rl;white-space:nowrap;font:700 15px/1 var(--font-display);letter-spacing:.24em;color:var(--ink);margin-top:11px}
+.spine .t{writing-mode:vertical-rl;white-space:normal;font:700 15px/1 var(--font-display);letter-spacing:.24em;color:var(--ink);margin-top:11px}
+/* white-space:normal 不能改回 nowrap:长脊名靠它折第二列(高度由 build_index 给的 max-height 卡住),
+   这样脊高只由正文量定,长标题靠自己折列消化, 不把脊顶高 */
 .spine .len{writing-mode:vertical-rl;white-space:nowrap;margin-top:auto;font:12px/1 var(--font-ui);color:var(--muted);letter-spacing:.08em}
 .spine:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .shelf-hint{color:var(--muted);font:12px/1.5 var(--font-ui);letter-spacing:.08em;margin:10px 2px 0}
@@ -228,8 +234,9 @@ footer{margin-top:76px;padding-top:22px;border-top:1px solid var(--line);
       <p class="mh-kicker">DISTILLED&nbsp;LIBRARY</p>
       <p class="mh-stat">{{STAT}}</p>
     </div>
-    <h1>把长篇，蒸成一页可回查的地图</h1>
-    <p class="mh-sub">一本书、一档视频系列、一个人物的生平，在这里被拆开重讲：它主张什么、怎么论证、哪里靠不住，全部压进一页离线可开的网页。AI 蒸馏是地图，不是领土 -- 关键处请回原始材料细看。</p>
+    <h1>把读不完的，蒸成一页可回查的地图</h1>
+    <p class="mh-sub">不管是一本书、一段视频，还是一个人物的思考，在这里都会被拆开重讲：它主张什么、怎么论证、哪里靠不住，全部压进一页离线可开的网页。<br>
+    AI 蒸馏是地图，不是领土 -- 关键处请回原始材料细看。</p>
     <hr class="mh-rule"><hr class="mh-rule2">
   </header>
 
