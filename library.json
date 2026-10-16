@@ -1,5 +1,23 @@
 [
   {
+    "slug": "munger-models",
+    "type": "biographies",
+    "title": "查理·芒格的思维模型与决策原则",
+    "author": "查理·芒格(Charlie Munger)",
+    "kicker": "人物专题 · 芒格本人 8 个来源(1994-2023)的决策原则蒸馏",
+    "slogan": "别只带一把锤子出门",
+    "question": "信息不全、心理有偏差、未来不可测时,怎么把判断做得比平均好一点?",
+    "formula": "好判断 ≈ 跨学科模型格栅 × 激励识别 × 安全边际 − 心理倾向的叠加",
+    "chars": 9837,
+    "units": 10,
+    "review_note": "",
+    "path": "biographies/munger-models.html",
+    "cover": "assets/covers/munger-models.jpg",
+    "pub_year": null,
+    "updated": "2026-10-16",
+    "spine_label": "查理·芒格"
+  },
+  {
     "slug": "economic-machine",
     "type": "videos",
     "title": "经济机器是怎样运转的",
@@ -50,23 +68,5 @@
     "cover": "assets/covers/thinking-fast-and-slow.jpg",
     "pub_year": 2011,
     "updated": "2026-10-16"
-  },
-  {
-    "slug": "munger-models",
-    "type": "biographies",
-    "title": "查理·芒格的思维模型与决策原则",
-    "author": "查理·芒格(Charlie Munger)",
-    "kicker": "人物专题 · 芒格本人 8 个来源(1994-2023)的决策原则蒸馏",
-    "slogan": "别只带一把锤子出门",
-    "question": "信息不全、心理有偏差、未来不可测时,怎么把判断做得比平均好一点?",
-    "formula": "好判断 ≈ 跨学科模型格栅 × 激励识别 × 安全边际 − 心理倾向的叠加",
-    "chars": 9837,
-    "units": 10,
-    "review_note": "",
-    "path": "biographies/munger-models.html",
-    "cover": "assets/covers/munger-models.jpg",
-    "pub_year": null,
-    "updated": "2026-10-16",
-    "spine_label": "查理·芒格"
   }
 ]

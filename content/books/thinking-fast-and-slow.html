@@ -2813,6 +2813,14 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
     }
   }
   window.__bdOpenChapter = openChapter;
+  /* 阅读进度重置入口(供页尾独立小脚本调用):清空已读并重画,不刷新页面 ——
+     走 location.reload() 会保留 URL 里的 #ch-N,被 hash 路由接管而跳到那一章 */
+  window.__bdClearRead = function(){
+    read.clear();
+    try { localStorage.removeItem(lsKey('read')); } catch (e) {}
+    $$('.toc-row.read').forEach(r => r.classList.remove('read'));
+    updateProgress();
+  };
 
   /* Q5-2:章尾裸钮 → 下一章预告卡(读 toc 论点标题 + 读时,JS 读 DOM);末章补终局卡跳 panel-judge */
   function initChapterPreview(){
@@ -3041,7 +3049,8 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
 </script>
 
 <script>
-/* 阅读进度重置:清除本页已读 localStorage 并刷新(独立小脚本,不改动主交互层) */
+/* 阅读进度重置:清空本页已读并就地重画(独立小脚本,不改动主交互层)。
+   不走 location.reload():刷新会保住 URL 里的 #ch-N,被 hash 路由接管, 结果点"重置进度"反而跳到那一章。 */
 (() => {
   const btn = document.querySelector('[data-reset-read]');
   if (!btn) return;
@@ -3049,7 +3058,8 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
     const m = document.querySelector('main[data-book-slug]');
     const slug = (m && m.dataset && m.dataset.bookSlug) || 'x';
     try { localStorage.removeItem(`bd:${slug}:read`); } catch (e) {}
-    location.reload();
+    if (typeof window.__bdClearRead === 'function') { window.__bdClearRead(); return; }
+    location.replace(location.pathname + location.search);   // 取不到钩子时的兜底:去掉 hash 再刷
   });
 })();
 </script>
