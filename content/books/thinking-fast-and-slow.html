@@ -213,7 +213,7 @@ main{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:0 0 60px;isolatio
 .napkin-sketch .sk-line{fill:none;stroke:var(--green);stroke-width:1.4;stroke-opacity:.45;shape-rendering:crispEdges}
 .napkin-sketch .sk-arrow{fill:var(--green)}
 /* 转换标签:纯文字挪到引线上方(不套框、不压箭头) */
-.napkin-sketch .sk-elabel{fill:var(--green);font-family:var(--font-display);font-weight:700;font-size:11px}
+.napkin-sketch .sk-elabel{fill:var(--green);font-family:var(--font-display);font-weight:700;font-size:11px;paint-order:stroke;stroke:var(--paper);stroke-width:3.5px;stroke-linejoin:round}
 
 /* ===== (1) 脑图 .bd-mindmap-wrap(v4.1 自绘 SVG 深色版:tidy-tree 确定性布局 + viewBox 缩放 viewer;
    深墨绿圆角画布嵌浅色纸页,上下留白过渡不生硬贴边;配色全走 --mm-* dark token(零 hex);
@@ -2296,12 +2296,36 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
     if (nodes.length < 2){ wrap.style.display = 'none'; return; }
     const SVGNS = 'http://www.w3.org/2000/svg';
     const byId = {}; nodes.forEach(n => { byId[n.id] = n; });
-    // 分层:最长路径(源在 0 层,沿边 +1;带上限防环)
+    // 环合边检测(回路草图,如 支出→收入→…→借贷再扩大→支出):u 可达 v 的边 = 环的闭合边,
+    // 不参与分层(否则最长路径迭代被环逐年抬高、列位炸开),整条改画节点带下方(v4.2)
+    // 环合边 = 按数据顺序逐边累积前向边时,目标已经能经「已收边」绕回源的那一条 --
+    // 即回路叙述里最后落下的"反哺"边(如 more->spend)。同圈里的前向叙事边(spend->income 等)不牵连。
+    // 不能用强连通分量/静态可达判定:圈内每条边都互相可达,会把前向边全误标。逐边判定,收边后全量重算可达。
+    const isCycleEdge = {};
+    {
+      const adjA = {}; nodes.forEach(n => { adjA[n.id] = []; });
+      const reachAll = () => {
+        const R = {}; nodes.forEach(n => { R[n.id] = {}; });
+        nodes.forEach(n => {
+          const st = [n.id];
+          while (st.length){ const x = st.pop(); if (R[n.id][x]) continue; R[n.id][x] = true; (adjA[x] || []).forEach(y => st.push(y)); }
+        });
+        return R;
+      };
+      let R = reachAll();
+      edges.forEach(e => {
+        if (!adjA[e.from] || !R[e.to]) return;          // 缺端点的坏边:不收边,后续绘制自会跳过
+        if (R[e.to][e.from]) isCycleEdge[e.from + '>' + e.to] = true;
+        else { adjA[e.from].push(e.to); R = reachAll(); }
+      });
+    }
+    const dagEdges = edges.filter(e => !isCycleEdge[e.from + '>' + e.to]);
+    // 分层:最长路径(源在 0 层,沿边 +1;带上限防环) -- 只在去环 DAG 上做
     const layer = {}; nodes.forEach(n => { layer[n.id] = 0; });
     const N = nodes.length;
     for (let it = 0; it < N + 2; it++){
       let changed = false;
-      edges.forEach(e => {
+      dagEdges.forEach(e => {
         if (byId[e.from] === undefined || byId[e.to] === undefined) return;
         if (layer[e.from] < N && layer[e.to] < layer[e.from] + 1){ layer[e.to] = layer[e.from] + 1; changed = true; }
       });
@@ -2314,38 +2338,77 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
     // 横向布局(sandy:横向从左到右、压低高度):层=列(x 递增),列内纵向堆叠居中
     const FS = 11, CH = 15.2, PADX = 15, NH = 38, VGAP = 14, HGAP = 40, PAD = 12;
     const wOf = n => Math.max(66, String(n.label || '').length * CH + PADX * 2);
-    // 每列宽=该列最宽节点;记最高列(节点最多)定画布高
-    const colW = {}; let maxColH = 0;
-    for (let L = 0; L <= maxL; L++){
-      const row = layers[L] || [];
-      colW[L] = row.reduce((m, n) => Math.max(m, wOf(n)), 0);
-      const h = row.length * NH + Math.max(0, row.length - 1) * VGAP;
-      if (h > maxColH) maxColH = h;
-    }
-    // 列 x 累加
-    const colX = {}; let xacc = PAD;
-    for (let L = 0; L <= maxL; L++){ colX[L] = xacc; xacc += colW[L] + HGAP; }
-    // 定位:列内纵向居中,x=列位
-    const pos = {};
-    for (let L = 0; L <= maxL; L++){
-      const row = layers[L] || [];
-      const colH = row.length * NH + Math.max(0, row.length - 1) * VGAP;
-      let y = PAD + (maxColH - colH) / 2;
-      const x = colX[L], w = colW[L];
-      row.forEach(n => { pos[n.id] = { x: x, y: y, w: w, cx: x + w / 2, cy: y + NH / 2, xL: x, xR: x + w }; y += NH + VGAP; });
-    }
-    const totalW = (xacc - HGAP) + PAD;
-    const totalH = PAD * 2 + maxColH;
+    const labW = s => String(s).length * FS + 6;
+    // 定位封装(topPad = 顶部标签预留高度;先 0 试排一遍,量出哪些标签放不下再重排)
+    const computePos = topPad => {
+      const colW = {}; let maxColH = 0;
+      for (let L = 0; L <= maxL; L++){
+        const row = layers[L] || [];
+        colW[L] = row.reduce((m, n) => Math.max(m, wOf(n)), 0);
+        const h = row.length * NH + Math.max(0, row.length - 1) * VGAP;
+        if (h > maxColH) maxColH = h;
+      }
+      const colX = {}; let xacc = PAD;
+      for (let L = 0; L <= maxL; L++){ colX[L] = xacc; xacc += colW[L] + HGAP; }
+      const pos = {};
+      for (let L = 0; L <= maxL; L++){
+        const row = layers[L] || [];
+        const colH = row.length * NH + Math.max(0, row.length - 1) * VGAP;
+        let y = PAD + topPad + (maxColH - colH) / 2;
+        const x = colX[L], w = colW[L];
+        row.forEach(n => { pos[n.id] = { x: x, y: y, w: w, cx: x + w / 2, cy: y + NH / 2, xL: x, xR: x + w }; y += NH + VGAP; });
+      }
+      return { pos: pos, totalW: (xacc - HGAP) + PAD, maxColH: maxColH };
+    };
+    let geo = computePos(0);
+    // 边标签安置:塞不进列间隙(溢出 >12px 会压进相邻节点盒、被后画的矩形盖住)的,挪到节点带上方;
+    // 环合边/回退边不入此列(它们整体走下方)。v4.2 治「标签文字被节点覆盖」
+    const BACK_MIN = 4;
+    const raised = [];
+    edges.forEach((e, i) => {
+      const A = geo.pos[e.from], B = geo.pos[e.to];
+      if (!A || !B) return;
+      const lab = (e.label || '').trim();
+      if (!lab || isCycleEdge[e.from + '>' + e.to] || B.cx < A.cx - BACK_MIN) return;
+      if (labW(lab) > (B.xL - A.xR) + 12) raised.push({ lab: lab, x: (A.xR + B.xL) / 2, y0: Math.min(A.y, B.y), i: i, w: labW(lab) });
+    });
+    // 抬高的标签按 x 分层,同层不重叠(挤就再抬一层,每层 13px)
+    raised.sort((a, b) => a.x - b.x);
+    const lvlSpans = [];
+    raised.forEach(r => {
+      let lvl = 0;
+      const L = r.x - r.w / 2, R = r.x + r.w / 2;
+      while ((lvlSpans[lvl] || []).some(s => L < s[1] + 8 && s[0] < R + 8)) lvl++;
+      r.lvl = lvl;
+      (lvlSpans[lvl] = lvlSpans[lvl] || []).push([L, R]);
+    });
+    const TOPPAD = raised.length ? Math.max(0, Math.max(...raised.map(r => 20 + r.lvl * 13 - r.y0))) : 0;
+    if (TOPPAD) geo = computePos(TOPPAD);
+    const pos = geo.pos;
+    const bandBottom = PAD + TOPPAD + geo.maxColH;
+    const hasBack = edges.some(e => isCycleEdge[e.from + '>' + e.to] || (pos[e.from] && pos[e.to] && pos[e.to].cx < pos[e.from].cx - BACK_MIN));
+    const backY = bandBottom + 16;
+    const totalW = geo.totalW;
+    const totalH = hasBack ? backY + 15 : bandBottom + PAD;
     const svg = document.createElementNS(SVGNS, 'svg');
     svg.setAttribute('viewBox', `0 0 ${Math.round(totalW)} ${Math.round(totalH)}`);
     svg.setAttribute('role', 'img');
     svg.setAttribute('aria-label', String((d && d.caption) || '全书因果骨架图'));
     const mk = (t, a) => { const el = document.createElementNS(SVGNS, t); for (const k in a) el.setAttribute(k, a[k]); return el; };
     // 边:横向直角肘(源右缘 -> 横 -> 竖 -> 横 -> 目标左缘);向右箭头。标签延后统一渲染(压在所有引线之上、节点之下,避免被后画的线穿过)
+    // 环合边/回退边(指向更早列)不挤肘形:从源底出、沿节点带下方横穿、再向上回到目标底(v4.2,治回路草图横线穿节点、标签被盖)
     const elabels = [];
-    edges.forEach(e => {
+    edges.forEach((e, i) => {
       const A = pos[e.from], B = pos[e.to];
       if (!A || !B) return;
+      if (isCycleEdge[e.from + '>' + e.to] || B.cx < A.cx - BACK_MIN){
+        const ay = A.y + NH, by = B.y + NH;
+        svg.appendChild(mk('polyline', { points: `${A.cx},${ay} ${A.cx},${backY} ${B.cx},${backY} ${B.cx},${by}`, class: 'sk-line' }));
+        svg.appendChild(mk('path', { d: `M ${B.cx - 5} ${by + 5} L ${B.cx + 5} ${by + 5} L ${B.cx} ${by} Z`, class: 'sk-arrow' }));
+        const blab = (e.label || '').trim();
+        if (blab) elabels.push({ lab: blab, x: (A.cx + B.cx) / 2, ly: backY + 17 });
+        return;
+      }
       const x1 = A.xR, y1 = A.cy, x2 = B.xL, y2 = B.cy;
       const midX = (x1 + x2) / 2;
       const pts = (y1 === y2) ? `${x1},${y1} ${x2},${y2}` : `${x1},${y1} ${midX},${y1} ${midX},${y2} ${x2},${y2}`;
@@ -2353,7 +2416,11 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
       const ah = 5;                                    // 向右小箭头(目标左缘)
       svg.appendChild(mk('path', { d: `M ${x2 - ah} ${y2 - ah} L ${x2 - ah} ${y2 + ah} L ${x2} ${y2} Z`, class: 'sk-arrow' }));
       const lab = (e.label || '').trim();
-      if (lab) elabels.push({ lab: lab, x: midX, ly: (y1 === y2) ? y1 : (y1 + y2) / 2 });
+      if (lab){
+        const r = raised.find(rr => rr.i === i);
+        elabels.push(r ? { lab: lab, x: r.x, ly: Math.min(A.y, B.y) - r.lvl * 13 }
+                       : { lab: lab, x: midX, ly: (y1 === y2) ? y1 : (y1 + y2) / 2 });
+      }
     });
     // 转换标签:纯文字挪到引线上方(不套框、不压箭头);延后渲染压在所有引线之上
     elabels.forEach(b => {
@@ -2557,7 +2624,7 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
       const a = e.target.closest && e.target.closest('a.jump'); if (!a) return;
       e.preventDefault(); if (dragMoved) return;
       const ch = a.getAttribute('data-ch') || a.getAttribute('href'); if (!ch) return;
-      const m = ch.match(/#ch-(\d+)/); if (m) toast('跳转到第 ' + m[1] + ' 章 · 逐章精读');
+      const m = ch.match(/#ch-(\d+)/); if (m) toast(document.body.dataset.kind === 'video' ? '跳转到第 ' + m[1] + ' 段 · 一段一段看' : '跳转到第 ' + m[1] + ' 章 · 逐章精读');
       location.hash = ch;
     }, true);
     // 工具栏
@@ -2763,7 +2830,7 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
         if (title) {
           nextBtn.classList.add('cn-card');
           nextBtn.textContent = '';
-          const k = document.createElement('span'); k.className = 'cn-kick'; k.textContent = '继续读第 ' + nn + ' 个单元';
+          const k = document.createElement('span'); k.className = 'cn-kick'; k.textContent = (document.body.dataset.kind === 'video' ? '继续看第 ' + nn + ' 段' : '继续读第 ' + nn + ' 个单元');
           const t = document.createElement('span'); t.className = 'cn-title'; t.textContent = title;
           const m = document.createElement('span'); m.className = 'cn-meta'; m.textContent = (meta ? meta + ' ' : '') + '→';
           nextBtn.appendChild(k); nextBtn.appendChild(t); nextBtn.appendChild(m);
@@ -2828,7 +2895,7 @@ body[data-theme="dark"] .bd-brandbar__logo.is-dark,body[data-theme="brand-dark"]
       let pick = null, top = Infinity;
       inView.forEach((vis, ch) => { if (vis) { const y = ch.getBoundingClientRect().top; if (y < top) { top = y; pick = ch; } } });
       if (pick) {
-        if (cxCh) cxCh.textContent = '第 ' + pick.id.replace('ch-', '') + ' 个单元';
+        if (cxCh) cxCh.textContent = (document.body.dataset.kind === 'video' ? '第 ' + pick.id.replace('ch-', '') + ' 段' : '第 ' + pick.id.replace('ch-', '') + ' 个单元');
         updateProgress();
         bar.classList.add('show');
       } else {
